@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
+        android:name=".VideoEditorApp"
         android:label="Video Editor"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity
