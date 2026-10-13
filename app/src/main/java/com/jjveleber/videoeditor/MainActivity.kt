@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                             )
-                            EditorScreen(vm, container.thumbnails, onBack = { nav.popBackStack() })
+                            EditorScreen(vm, container.thumbnails, onBack = { if (nav.previousBackStackEntry != null) nav.popBackStack() })
                         }
                     }
                 }
