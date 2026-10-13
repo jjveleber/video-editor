@@ -122,6 +122,15 @@ class EditorViewModel(
 
     fun move(from: Int, to: Int) = edit { it.move(from, to) }
 
+    /** Moves the selected clip [delta] places (negative is left). No-op at the ends or with nothing selected. */
+    fun moveSelected(delta: Int) {
+        val id = _state.value.selectedId ?: return
+        edit { p ->
+            val from = p.segments.indexOfFirst { it.id == id }
+            p.move(from, from + delta)
+        }
+    }
+
     fun undo() {
         history?.undo()?.let { publish(it); scheduleSave(it) }
     }
