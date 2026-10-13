@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
 data class EditorUiState(
     val project: Project? = null,
@@ -58,6 +59,9 @@ class EditorViewModel(
     private var dragBase: Project? = null
     private var saveJob: Job? = null
     private var pendingSave: Project? = null
+    private var pendingSeq = 0L
+    private val saveLock = Any()
+    private var writtenSeq = 0L
 
     init {
         viewModelScope.launch {
@@ -133,13 +137,13 @@ class EditorViewModel(
         val pending = pendingSave ?: return
         saveJob?.cancel()
         pendingSave = null
-        repo.save(pending)
+        write(pending, pendingSeq)
     }
 
     override fun onCleared() {
         flush()
         // Safe to release now: the undo history (which could restore a deleted clip) dies with this screen.
-        releaseUnreferencedGrants(repo.list(), grants, ExportController.activeUris)
+        releaseUnreferencedGrants(repo.listComplete(), grants, ExportController.activeUris)
     }
 
     private fun preview(op: (Project) -> Project) {
@@ -162,9 +166,12 @@ class EditorViewModel(
 
     private fun publish(project: Project) {
         val h = history ?: return
+        // A drag in progress must restart from the new project, or its next frame would revert this change.
+        dragBase = null
         _state.update { s ->
             s.copy(
                 project = project,
+                isDragging = false,
                 canUndo = h.canUndo,
                 canRedo = h.canRedo,
                 selectedId = s.selectedId?.takeIf { id -> project.segments.any { it.id == id } },
@@ -174,12 +181,27 @@ class EditorViewModel(
 
     private fun scheduleSave(project: Project) {
         pendingSave = project
+        val seq = ++pendingSeq
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             delay(SAVE_DEBOUNCE_MS)
             val toSave = pendingSave ?: return@launch
-            withContext(io) { repo.save(toSave) }
+            withContext(io) { write(toSave, seq) }
             if (pendingSave === toSave) pendingSave = null
+        }
+    }
+
+    /**
+     * Saves [project] unless a newer snapshot ([seq] order) is already on disk. Cancelling the debounced
+     * job cannot stop a write already running on [io], so this keeps it from landing after a newer flush.
+     */
+    private fun write(project: Project, seq: Long) = synchronized(saveLock) {
+        if (seq <= writtenSeq) return@synchronized
+        try {
+            repo.save(project)
+            writtenSeq = seq
+        } catch (e: IOException) {
+            _state.update { it.copy(message = "Could not save project: ${e.message}") }
         }
     }
 }

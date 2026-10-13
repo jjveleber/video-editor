@@ -24,12 +24,14 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EditorViewModelTest {
     @get:Rule val tmp = TemporaryFolder()
 
     private val dispatcher = StandardTestDispatcher()
+    private lateinit var dir: File
     private lateinit var repo: ProjectRepository
     private val grants = FakeGrants()
     private val good = ProbeResult(4_000_000L, 1920, 1080, true)
@@ -44,7 +46,8 @@ class EditorViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        repo = ProjectRepository(tmp.newFolder("projects"))
+        dir = tmp.newFolder("projects")
+        repo = ProjectRepository(dir)
     }
 
     @After
@@ -134,6 +137,22 @@ class EditorViewModelTest {
     }
 
     @Test
+    fun undoDuringTrimDragIsNotReverted() = runTest(dispatcher) {
+        val vm = vmWith("content://a.mp4")
+        vm.addClips(listOf("content://b.mp4"))
+        runCurrent()
+        val id = vm.state.value.project!!.segments[0].id
+        vm.trimStartPreview(id, 500_000L)
+        vm.undo()
+        assertEquals(1, vm.state.value.project!!.segments.size)
+        vm.trimStartPreview(id, 1_000_000L)
+        vm.endTrim()
+        val segments = vm.state.value.project!!.segments
+        assertEquals(1, segments.size)
+        assertEquals(1_000_000L, segments[0].startUs)
+    }
+
+    @Test
     fun trimEndDragUpdatesEnd() = runTest(dispatcher) {
         val vm = vmWith("content://a.mp4")
         val id = vm.state.value.project!!.segments[0].id
@@ -191,6 +210,22 @@ class EditorViewModelTest {
         val id = vm.state.value.project!!.id
         vm.flush()
         assertEquals(1, repo.load(id)!!.segments.size)
+    }
+
+    @Test
+    fun failedSaveReportsMessageInsteadOfCrashing() = runTest(dispatcher) {
+        val vm = vmWith("content://a.mp4")
+        dir.setWritable(false)
+        try {
+            vm.splitAt(2_000_000L)
+            advanceTimeBy(600)
+            runCurrent()
+            assertTrue(vm.state.value.message!!.startsWith("Could not save project"))
+            vm.splitAt(1_000_000L)
+            vm.flush()
+        } finally {
+            dir.setWritable(true)
+        }
     }
 
     @Test
