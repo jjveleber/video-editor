@@ -81,6 +81,7 @@ class EditorViewModel(
                     unusable += withContext(io) { prober.displayName(uri) }
                     continue
                 }
+                _state.update { it.copy(missingUris = it.missingUris - uri) }
                 if (!grants.take(uri)) notPersisted += withContext(io) { prober.displayName(uri) }
                 added += result.toSegment(uri)
             }

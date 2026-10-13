@@ -192,4 +192,27 @@ class EditorViewModelTest {
         vm.flush()
         assertEquals(1, repo.load(id)!!.segments.size)
     }
+
+    @Test
+    fun readdingMissingSourceClearsMissingFlag() = runTest(dispatcher) {
+        val flaky = FlakyProber(good)
+        val project = repo.save(
+            repo.create("P").copy(segments = listOf(Segment("s1", "content://a.mp4", 4_000_000L, 0L, 4_000_000L, true, 1920, 1080))),
+        )
+        val vm = EditorViewModel(project.id, repo, flaky, grants, io = dispatcher)
+        runCurrent()
+        assertTrue(vm.state.value.hasMissing)
+        assertFalse(vm.state.value.canExport)
+        flaky.available = true
+        vm.addClips(listOf("content://a.mp4"))
+        runCurrent()
+        assertFalse(vm.state.value.hasMissing)
+        assertTrue(vm.state.value.canExport)
+    }
+
+    private class FlakyProber(private val result: ProbeResult) : com.jjveleber.videoeditor.media.SourceProber {
+        var available = false
+        override suspend fun probe(uri: String): ProbeResult? = if (available) result else null
+        override fun displayName(uri: String): String = uri.substringAfterLast('/')
+    }
 }
