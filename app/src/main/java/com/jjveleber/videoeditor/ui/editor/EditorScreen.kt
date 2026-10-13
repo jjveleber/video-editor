@@ -35,6 +35,7 @@ import androidx.media3.ui.PlayerView
 import com.jjveleber.videoeditor.media.ThumbnailLoader
 import com.jjveleber.videoeditor.model.canSplitAt
 import com.jjveleber.videoeditor.player.ProjectPlayer
+import com.jjveleber.videoeditor.ui.arrange.ArrangeDialog
 import com.jjveleber.videoeditor.ui.timeline.TimelineStrip
 import kotlinx.coroutines.delay
 
@@ -46,6 +47,7 @@ fun EditorScreen(vm: EditorViewModel, thumbnails: ThumbnailLoader, onBack: () ->
     var playheadUs by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
     var showExport by remember { mutableStateOf(false) }
+    var showArrange by remember { mutableStateOf(false) }
     val project = state.project
 
     DisposableEffect(Unit) { onDispose { projectPlayer.release() } }
@@ -90,6 +92,7 @@ fun EditorScreen(vm: EditorViewModel, thumbnails: ThumbnailLoader, onBack: () ->
                 enabled = project?.canSplitAt(playheadUs) == true && !state.hasMissing,
             ) { Text("Split") }
             TextButton(onClick = vm::deleteSelected, enabled = state.selectedId != null) { Text("Delete") }
+            TextButton(onClick = { showArrange = true }, enabled = (project?.segments?.size ?: 0) >= 2) { Text("Arrange") }
             TextButton(onClick = vm::undo, enabled = state.canUndo) { Text("Undo") }
             TextButton(onClick = vm::redo, enabled = state.canRedo) { Text("Redo") }
             TextButton(onClick = { showExport = true }, enabled = state.canExport) { Text("Export") }
@@ -125,6 +128,21 @@ fun EditorScreen(vm: EditorViewModel, thumbnails: ThumbnailLoader, onBack: () ->
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         }
+    }
+
+    if (showArrange && project != null) {
+        ArrangeDialog(
+            project = project,
+            missingUris = state.missingUris,
+            selectedId = state.selectedId,
+            canUndo = state.canUndo,
+            thumbnails = thumbnails,
+            onSelect = vm::select,
+            onMove = vm::move,
+            onMoveSelected = vm::moveSelected,
+            onUndo = vm::undo,
+            onDismiss = { showArrange = false },
+        )
     }
 
     if (showExport && project != null) {
