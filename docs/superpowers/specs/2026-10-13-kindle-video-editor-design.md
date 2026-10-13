@@ -75,7 +75,7 @@ Landscape-first layout for the 11" screen; portrait also works.
 2. **Editor:**
    - Preview player on top, playing the whole project as one continuous sequence.
    - Timeline strip below: one block per segment, width proportional to duration, showing thumbnails. Each block has draggable start/end handles (trim). A playhead line shows the current position; tapping the strip seeks.
-   - The timeline scrolls horizontally and supports pinch-to-zoom (scale in pixels per second), so long clips (10+ min) can still be trimmed precisely. Default zoom fits the whole project on screen. Blocks have a minimum on-screen width of 24 dp so short segments stay tappable.
+   - The timeline uses a fixed scale of 20 dp per second and scrolls horizontally, so long clips (10+ min) can still be trimmed precisely. No zoom in v1. Blocks have a minimum on-screen width of 24 dp so short segments stay tappable. During playback the timeline auto-scrolls to keep the playhead visible.
    - Split acts on the segment under the playhead, at the playhead position.
    - Long-press and drag a block to reorder.
    - Toolbar: Add, Split, Delete, Undo, Redo, Export.
