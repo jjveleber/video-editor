@@ -44,7 +44,7 @@ All features reduce to one model:
 
 ```
 Project  = id, name, ordered list of Segments, createdAt, updatedAt
-Segment  = id, sourceUri, sourceDurationUs, startUs, endUs, hasAudio, width, height, isHdr
+Segment  = id, sourceUri, sourceDurationUs, startUs, endUs, hasAudio, width, height
 ```
 
 `width` / `height` are display dimensions after applying the source's rotation metadata (a portrait phone video stored as 1920x1080 with 90 degree rotation is recorded as 1080x1920).
