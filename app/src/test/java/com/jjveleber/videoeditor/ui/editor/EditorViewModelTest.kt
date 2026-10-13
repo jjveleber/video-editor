@@ -245,6 +245,36 @@ class EditorViewModelTest {
         assertTrue(vm.state.value.canExport)
     }
 
+    @Test
+    fun moveSelectedShiftsSelectedClipOneStepPerUndo() = runTest(dispatcher) {
+        val vm = vmWith("content://a.mp4", "content://b.mp4", "content://a.mp4")
+        val ids = vm.state.value.project!!.segments.map { it.id }
+        vm.select(ids[0])
+        vm.moveSelected(1)
+        vm.moveSelected(1)
+        assertEquals(listOf(ids[1], ids[2], ids[0]), vm.state.value.project!!.segments.map { it.id })
+        assertEquals(ids[0], vm.state.value.selectedId)
+        vm.undo()
+        assertEquals(listOf(ids[1], ids[0], ids[2]), vm.state.value.project!!.segments.map { it.id })
+        advanceTimeBy(600)
+        runCurrent()
+        assertEquals(listOf(ids[1], ids[0], ids[2]), repo.load(vm.state.value.project!!.id)!!.segments.map { it.id })
+    }
+
+    @Test
+    fun moveSelectedIgnoresEdgesAndNoSelection() = runTest(dispatcher) {
+        val vm = vmWith("content://a.mp4", "content://b.mp4")
+        val before = vm.state.value.project!!
+        vm.moveSelected(1)
+        vm.select(before.segments[0].id)
+        vm.moveSelected(-1)
+        vm.select(before.segments[1].id)
+        vm.moveSelected(1)
+        assertEquals(before, vm.state.value.project)
+        vm.undo()
+        assertTrue(vm.state.value.project!!.segments.isEmpty())
+    }
+
     private class FlakyProber(private val result: ProbeResult) : com.jjveleber.videoeditor.media.SourceProber {
         var available = false
         override suspend fun probe(uri: String): ProbeResult? = if (available) result else null
