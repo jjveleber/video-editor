@@ -160,29 +160,35 @@ private fun CardGrid(
                             .pointerInput(columns, count) {
                                 // Only one card drags at a time; a second finger on another card is ignored.
                                 var mine = false
-                                detectDragGestures(
-                                    onDragStart = { down ->
-                                        mine = draggingId == null
-                                        if (!mine) return@detectDragGestures
-                                        grab = down
-                                        pointer = origin(currentIndex) + down
-                                        draggingId = segment.id
-                                        onSelect(segment.id)
-                                    },
-                                    onDragEnd = {
-                                        if (!mine) return@detectDragGestures
-                                        mine = false
-                                        val to = gridTargetIndex(pointer.x, pointer.y, columns, cellWidth, cellHeight, count)
-                                        draggingId = null
-                                        if (to != currentIndex) onMove(currentIndex, to)
-                                    },
-                                    onDragCancel = {
-                                        if (mine) draggingId = null
-                                        mine = false
-                                    },
-                                ) { change, amount ->
-                                    change.consume()
-                                    if (mine) pointer += amount
+                                // detectDragGestures skips onDragCancel when this coroutine is cancelled (keys change
+                                // or the card leaves composition, e.g. Undo mid-drag), so release the drag here too.
+                                try {
+                                    detectDragGestures(
+                                        onDragStart = { down ->
+                                            mine = draggingId == null
+                                            if (!mine) return@detectDragGestures
+                                            grab = down
+                                            pointer = origin(currentIndex) + down
+                                            draggingId = segment.id
+                                            onSelect(segment.id)
+                                        },
+                                        onDragEnd = {
+                                            if (!mine) return@detectDragGestures
+                                            mine = false
+                                            val to = gridTargetIndex(pointer.x, pointer.y, columns, cellWidth, cellHeight, count)
+                                            draggingId = null
+                                            if (to != currentIndex) onMove(currentIndex, to)
+                                        },
+                                        onDragCancel = {
+                                            if (mine) draggingId = null
+                                            mine = false
+                                        },
+                                    ) { change, amount ->
+                                        change.consume()
+                                        if (mine) pointer += amount
+                                    }
+                                } finally {
+                                    if (mine) draggingId = null
                                 }
                             },
                     )

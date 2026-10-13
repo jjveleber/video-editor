@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +48,7 @@ fun EditorScreen(vm: EditorViewModel, thumbnails: ThumbnailLoader, onBack: () ->
     var playheadUs by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
     var showExport by remember { mutableStateOf(false) }
-    var showArrange by remember { mutableStateOf(false) }
+    var showArrange by rememberSaveable { mutableStateOf(false) }
     val project = state.project
 
     DisposableEffect(Unit) { onDispose { projectPlayer.release() } }
@@ -92,7 +93,7 @@ fun EditorScreen(vm: EditorViewModel, thumbnails: ThumbnailLoader, onBack: () ->
                 enabled = project?.canSplitAt(playheadUs) == true && !state.hasMissing,
             ) { Text("Split") }
             TextButton(onClick = vm::deleteSelected, enabled = state.selectedId != null) { Text("Delete") }
-            TextButton(onClick = { showArrange = true }, enabled = (project?.segments?.size ?: 0) >= 2) { Text("Arrange") }
+            TextButton(onClick = { projectPlayer.player.pause(); showArrange = true }, enabled = (project?.segments?.size ?: 0) >= 2) { Text("Arrange") }
             TextButton(onClick = vm::undo, enabled = state.canUndo) { Text("Undo") }
             TextButton(onClick = vm::redo, enabled = state.canRedo) { Text("Redo") }
             TextButton(onClick = { showExport = true }, enabled = state.canExport) { Text("Export") }
@@ -135,7 +136,7 @@ fun EditorScreen(vm: EditorViewModel, thumbnails: ThumbnailLoader, onBack: () ->
         if ((project?.segments?.size ?: 0) < 2) showArrange = false
     }
 
-    if (showArrange && project != null) {
+    if (showArrange && project != null && project.segments.size >= 2) {
         ArrangeDialog(
             project = project,
             missingUris = state.missingUris,
