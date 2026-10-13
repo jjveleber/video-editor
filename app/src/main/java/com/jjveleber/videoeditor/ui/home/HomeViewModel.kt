@@ -40,11 +40,20 @@ class HomeViewModel(
         }
     }
 
+    private var creating = false
+
+    /** Ignores taps while a create is in flight, so a double tap makes one project. */
     fun create(onCreated: (String) -> Unit) {
+        if (creating) return
+        creating = true
         viewModelScope.launch {
-            val project = withContext(io) { repo.create("Project ${_projects.value.size + 1}") }
-            _projects.value = loadSummaries()
-            onCreated(project.id)
+            try {
+                val project = withContext(io) { repo.create("Project ${_projects.value.size + 1}") }
+                _projects.value = loadSummaries()
+                onCreated(project.id)
+            } finally {
+                creating = false
+            }
         }
     }
 
@@ -60,7 +69,7 @@ class HomeViewModel(
         viewModelScope.launch {
             withContext(io) {
                 repo.delete(id)
-                releaseUnreferencedGrants(repo.list(), grants, ExportController.activeUris)
+                releaseUnreferencedGrants(repo.listComplete(), grants, ExportController.activeUris)
             }
             refresh()
         }

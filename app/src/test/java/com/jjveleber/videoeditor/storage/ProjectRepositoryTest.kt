@@ -80,4 +80,12 @@ class ProjectRepositoryTest {
         assertEquals(listOf("Good"), repo.list().map { it.name })
         assertNull(repo.load("broken"))
     }
+
+    @Test
+    fun listCompleteIsNullWhenAnyProjectIsUnreadable() {
+        repo.create("Good")
+        assertEquals(listOf("Good"), repo.listComplete()!!.map { it.name })
+        File(dir, "broken.json").writeText("{not json")
+        assertNull(repo.listComplete())
+    }
 }

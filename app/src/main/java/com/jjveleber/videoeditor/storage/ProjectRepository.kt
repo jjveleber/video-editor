@@ -21,10 +21,13 @@ class ProjectRepository(
         return project
     }
 
-    fun list(): List<Project> =
-        dir.listFiles { f -> f.name.endsWith(".json") }.orEmpty()
-            .mapNotNull { read(it) }
-            .sortedByDescending { it.updatedAt }
+    fun list(): List<Project> = projectFiles().mapNotNull { read(it) }.sortedByDescending { it.updatedAt }
+
+    /** Every project, or null if any project file could not be read, so the result may be incomplete. */
+    fun listComplete(): List<Project>? {
+        val files = projectFiles()
+        return files.mapNotNull { read(it) }.takeIf { it.size == files.size }
+    }
 
     fun load(id: String): Project? = read(fileFor(id))
 
@@ -39,6 +42,8 @@ class ProjectRepository(
     fun delete(id: String) {
         fileFor(id).delete()
     }
+
+    private fun projectFiles() = dir.listFiles { f -> f.name.endsWith(".json") }.orEmpty()
 
     private fun fileFor(id: String) = File(dir, "$id.json")
 
