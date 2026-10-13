@@ -26,7 +26,9 @@ class ArrangeGridTest {
 
     @Test
     fun columnsFitWidthWithAtLeastOne() {
-        assertEquals(6, gridColumns(availableWidth = 1280f, cellWidth = 200f))
-        assertEquals(1, gridColumns(availableWidth = 120f, cellWidth = 200f))
+        assertEquals(6, gridColumns(availableWidth = 1248f, cardWidth = 176f, gap = 12f))
+        // Two cards and one gap fit exactly: no trailing gap is needed.
+        assertEquals(2, gridColumns(availableWidth = 364f, cardWidth = 176f, gap = 12f))
+        assertEquals(1, gridColumns(availableWidth = 120f, cardWidth = 176f, gap = 12f))
     }
 }

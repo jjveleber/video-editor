@@ -130,6 +130,11 @@ fun EditorScreen(vm: EditorViewModel, thumbnails: ThumbnailLoader, onBack: () ->
         }
     }
 
+    // Undo can drop below two clips while Arrange is open; there is nothing left to arrange then.
+    LaunchedEffect(project?.segments?.size) {
+        if ((project?.segments?.size ?: 0) < 2) showArrange = false
+    }
+
     if (showArrange && project != null) {
         ArrangeDialog(
             project = project,

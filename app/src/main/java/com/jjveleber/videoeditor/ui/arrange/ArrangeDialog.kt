@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -117,10 +118,13 @@ private fun CardGrid(
     var grab by remember { mutableStateOf(Offset.Zero) }
 
     BoxWithConstraints(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        val columns = gridColumns(with(density) { maxWidth.toPx() }, cellWidth)
+        val columns = gridColumns(with(density) { maxWidth.toPx() }, with(density) { CARD_WIDTH.toPx() }, with(density) { GAP.toPx() })
         val count = project.segments.size
         val rows = (count + columns - 1) / columns
-        val target = draggingId?.let { gridTargetIndex(pointer.x, pointer.y, columns, cellWidth, cellHeight, count) }
+        // Derived so a drag frame only recomposes when the target slot changes.
+        val target by remember(columns, count, cellWidth, cellHeight) {
+            derivedStateOf { draggingId?.let { gridTargetIndex(pointer.x, pointer.y, columns, cellWidth, cellHeight, count) } }
+        }
         fun origin(index: Int) = Offset((index % columns) * cellWidth, (index / columns) * cellHeight)
 
         Box(Modifier.height(with(density) { (rows * cellHeight).toDp() }).fillMaxWidth()) {
@@ -129,6 +133,8 @@ private fun CardGrid(
                 Box(
                     Modifier
                         .offset { IntOffset(o.x.roundToInt(), o.y.roundToInt()) }
+                        // Above resting cards so the drop slot shows, below the dragged card.
+                        .zIndex(0.5f)
                         .size(CARD_WIDTH, THUMB_HEIGHT + LABEL_HEIGHT)
                         .border(2.dp, Color.White, RoundedCornerShape(6.dp)),
                 )
@@ -137,7 +143,6 @@ private fun CardGrid(
                 key(segment.id) {
                     val currentIndex by rememberUpdatedState(index)
                     val dragging = segment.id == draggingId
-                    val o = if (dragging) pointer - grab else origin(index)
                     ClipCard(
                         segment = segment,
                         position = index + 1,
@@ -145,26 +150,39 @@ private fun CardGrid(
                         missing = segment.sourceUri in missingUris,
                         thumbnails = thumbnails,
                         modifier = Modifier
-                            .offset { IntOffset(o.x.roundToInt(), o.y.roundToInt()) }
+                            .offset {
+                                // Pointer is read here (layout), not in composition, so dragging doesn't recompose cards.
+                                val o = if (dragging) pointer - grab else origin(index)
+                                IntOffset(o.x.roundToInt(), o.y.roundToInt())
+                            }
                             .zIndex(if (dragging) 1f else 0f)
                             .pointerInput(Unit) { detectTapGestures(onTap = { onSelect(segment.id) }) }
                             .pointerInput(columns, count) {
+                                // Only one card drags at a time; a second finger on another card is ignored.
+                                var mine = false
                                 detectDragGestures(
                                     onDragStart = { down ->
+                                        mine = draggingId == null
+                                        if (!mine) return@detectDragGestures
                                         grab = down
                                         pointer = origin(currentIndex) + down
                                         draggingId = segment.id
                                         onSelect(segment.id)
                                     },
                                     onDragEnd = {
+                                        if (!mine) return@detectDragGestures
+                                        mine = false
                                         val to = gridTargetIndex(pointer.x, pointer.y, columns, cellWidth, cellHeight, count)
                                         draggingId = null
                                         if (to != currentIndex) onMove(currentIndex, to)
                                     },
-                                    onDragCancel = { draggingId = null },
+                                    onDragCancel = {
+                                        if (mine) draggingId = null
+                                        mine = false
+                                    },
                                 ) { change, amount ->
                                     change.consume()
-                                    pointer += amount
+                                    if (mine) pointer += amount
                                 }
                             },
                     )
