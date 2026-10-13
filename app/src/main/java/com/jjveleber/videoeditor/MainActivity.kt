@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -28,13 +29,16 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize()) {
                     val nav = rememberNavController()
                     NavHost(nav, startDestination = "home") {
-                        composable("home") {
+                        composable("home") { entry ->
                             val vm: HomeViewModel = viewModel(
                                 factory = viewModelFactory {
                                     initializer { HomeViewModel(container.repository, container.grants) }
                                 },
                             )
-                            HomeScreen(vm, onOpen = { id -> nav.navigate("editor/$id") })
+                            // Only navigate from a resumed Home, so a double tap cannot stack two editors.
+                            HomeScreen(vm, onOpen = { id ->
+                                if (entry.lifecycle.currentState == Lifecycle.State.RESUMED) nav.navigate("editor/$id")
+                            })
                         }
                         composable("editor/{id}") { entry ->
                             val id = entry.arguments?.getString("id")!!

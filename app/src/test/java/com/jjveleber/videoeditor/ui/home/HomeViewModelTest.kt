@@ -53,6 +53,20 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun doubleTapCreatesOneProject() = runTest(dispatcher) {
+        val vm = HomeViewModel(repo, grants, io = dispatcher)
+        val opened = mutableListOf<String>()
+        vm.create { opened += it }
+        vm.create { opened += it }
+        runCurrent()
+        assertEquals(1, vm.projects.value.size)
+        assertEquals(1, opened.size)
+        vm.create { opened += it }
+        runCurrent()
+        assertEquals(2, vm.projects.value.size)
+    }
+
+    @Test
     fun summaryShowsCountAndDuration() = runTest(dispatcher) {
         repo.save(repo.create("A").copy(segments = listOf(seg("u1"), seg("u2"))))
         val vm = HomeViewModel(repo, grants, io = dispatcher)
