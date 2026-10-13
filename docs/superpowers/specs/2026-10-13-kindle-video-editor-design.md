@@ -44,8 +44,10 @@ All features reduce to one model:
 
 ```
 Project  = id, name, ordered list of Segments, createdAt, updatedAt
-Segment  = id, sourceUri, sourceDurationUs, startUs, endUs, hasAudio, width, height
+Segment  = id, sourceUri, sourceDurationUs, startUs, endUs, hasAudio, width, height, isHdr
 ```
+
+`width` / `height` are display dimensions after applying the source's rotation metadata (a portrait phone video stored as 1920x1080 with 90 degree rotation is recorded as 1080x1920).
 
 - **Add clips (merge):** each picked video becomes a full-length segment appended to the end.
 - **Trim:** change a segment's `startUs` / `endUs`.
@@ -54,6 +56,8 @@ Segment  = id, sourceUri, sourceDurationUs, startUs, endUs, hasAudio, width, hei
 - **Reorder:** move a segment to a new index.
 
 Edit operations are pure functions returning a new immutable `Project`.
+
+The undo/redo history is in memory only. It starts empty each time a project is opened.
 
 ### Constraints
 
@@ -71,6 +75,8 @@ Landscape-first layout for the 11" screen; portrait also works.
 2. **Editor:**
    - Preview player on top, playing the whole project as one continuous sequence.
    - Timeline strip below: one block per segment, width proportional to duration, showing thumbnails. Each block has draggable start/end handles (trim). A playhead line shows the current position; tapping the strip seeks.
+   - The timeline scrolls horizontally and supports pinch-to-zoom (scale in pixels per second), so long clips (10+ min) can still be trimmed precisely. Default zoom fits the whole project on screen. Blocks have a minimum on-screen width of 24 dp so short segments stay tappable.
+   - Split acts on the segment under the playhead, at the playhead position.
    - Long-press and drag a block to reorder.
    - Toolbar: Add, Split, Delete, Undo, Redo, Export.
    - Selected segment is highlighted; Delete acts on it.
@@ -78,15 +84,16 @@ Landscape-first layout for the 11" screen; portrait also works.
 
 ### Mixed input handling
 
-- Output resolution and frame rate come from the quality choice. 720p = 1280x720, 1080p = 1920x1080 (swapped to portrait dimensions if the first clip is portrait). "Match first clip" uses the first segment's dimensions.
+- Output resolution comes from the quality choice. Frame rate is not converted: each clip keeps its own frame rate in the output (MP4 handles variable timing). 720p = 1280x720, 1080p = 1920x1080 (swapped to portrait dimensions if the first clip is portrait). "Match first clip" uses the first segment's dimensions.
 - Clips with a different aspect ratio are scaled to fit and letterboxed (black bars).
 - Clips without audio get silent audio so the output audio track is continuous.
+- HDR inputs (common on newer phones) are tone-mapped to SDR (`Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL`) so mixed HDR and SDR clips merge correctly.
 - Output: H.264 video, AAC audio, MP4 container.
 
 ### Persistence
 
 - Projects autosave (debounced ~500 ms after each edit) as JSON in `filesDir/projects/`.
-- Source files are picked via the system document picker (`ACTION_OPEN_DOCUMENT`, `video/*`, multiple). The app takes persistable read permission on each URI and releases it when no project references the URI anymore.
+- Source files are picked via the system document picker (`ACTION_OPEN_DOCUMENT`, `video/*`, multiple). The app takes persistable read permission on each URI and releases it when no project references the URI anymore. If a provider refuses a persistable grant, the clip is still added, and a toast warns it may be unavailable after the app restarts.
 
 ## 5. Architecture
 
@@ -95,9 +102,9 @@ Landscape-first layout for the 11" screen; portrait also works.
 | `model` | `Segment`, `Project` data classes; pure ops `append`, `trim`, `split`, `delete`, `move`; global-time helpers (total duration, map global position to segment + offset) | nothing |
 | `history` | `UndoStack<T>`: `push`, `undo`, `redo`, `canUndo`, `canRedo`; capped at 50 entries; push clears redo | nothing |
 | `storage` | `ProjectRepository`: list, load, save, delete project JSON; take/release persistable URI permissions | model |
-| `media` | `SourceProbe` (duration, dimensions, rotation, has-audio via `MediaMetadataRetriever`), `ThumbnailLoader` (cached frame bitmaps), `CompositionBuilder` (`Project` + quality to Media3 `Composition`), `Exporter` (runs `Transformer`, emits progress `Flow`, writes to MediaStore) | model, Media3 |
+| `media` | `SourceProbe` (duration, dimensions, rotation, has-audio via `MediaMetadataRetriever`), `ThumbnailLoader` (cached frame bitmaps), `CompositionBuilder` (`Project` + quality to Media3 `Composition`), `Exporter` (runs `Transformer` to a temp file in `cacheDir`, emits progress, then copies the result into MediaStore and deletes the temp file) | model, Media3 |
 | `player` | Converts `Project` to an ExoPlayer playlist of `MediaItem`s with `ClippingConfiguration`; maps player position (window index + offset) to global time and back | model, ExoPlayer |
-| `export` | `ExportService`: foreground service that runs `Exporter` with a progress notification so export survives backgrounding and screen-off | media |
+| `export` | `ExportController`: process-wide singleton holding export state as a `StateFlow` (Idle, Running(progress), Done(uri), Failed(message)), observed by both the UI and the service. `ExportService`: foreground service (`foregroundServiceType="dataSync"`, with `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_DATA_SYNC` permissions) that runs `Exporter` with a progress notification so export survives backgrounding and screen-off. One export at a time. | media |
 | `ui` | `HomeScreen`, `EditorScreen`, `TimelineStrip`, `ExportSheet`, `HomeViewModel`, `EditorViewModel` | all above |
 
 ### Data flow
@@ -112,7 +119,8 @@ user gesture
        -> player playlist rebuilt (position preserved)
        -> debounced autosave via ProjectRepository
 
-Export: current Project -> CompositionBuilder -> ExportService/Exporter -> MediaStore (Movies/VideoEditor/)
+Export: current Project -> CompositionBuilder -> ExportService -> Exporter -> temp MP4 in cacheDir -> copied to MediaStore (Movies/VideoEditor/)
+        ExportController.state <- progress updates -> ExportSheet + notification
 ```
 
 During a trim-handle drag, the ViewModel updates the displayed project live but pushes a single undo entry when the drag ends.
@@ -124,6 +132,7 @@ During a trim-handle drag, the ViewModel updates the displayed project live but 
 - Video effects: `Presentation.createForWidthAndHeight(w, h, LAYOUT_SCALE_TO_FIT)` for consistent output size.
 - Silence for segments with `hasAudio = false`: `Composition.Builder.experimentalSetForceAudioTrack(true)` so the output always has an audio track and silence fills gaps.
 - Output MIME types: `video/avc`, `audio/mp4a-latm`.
+- HDR mode: tone-map to SDR (see section 4).
 
 ## 6. Error handling
 
@@ -131,7 +140,7 @@ During a trim-handle drag, the ViewModel updates the displayed project live but 
 |---|---|---|
 | Source missing or permission revoked | `SourceProbe` / URI open fails on project load | Segment marked missing (red on timeline); can be deleted; Export disabled while any missing segment remains, with an explanation |
 | Unsupported or unreadable file | Probe fails when adding | Toast "Can't use <file name>"; segment not added |
-| Export failure (codec limit, out of space, etc.) | `Transformer` error callback | Error message in export sheet, Retry button; partial output deleted (MediaStore pending item removed) |
+| Export failure (codec limit, out of space, etc.) | `Transformer` error callback | Error message in export sheet, Retry button; temp file in `cacheDir` deleted, nothing written to MediaStore |
 | App backgrounded during export | n/a | Foreground service keeps running; notification shows progress and completion |
 | Invalid edit (too-short segment, split at edge) | Model op preconditions | Op is a no-op; related UI control disabled |
 
