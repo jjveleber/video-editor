@@ -44,7 +44,7 @@ All features reduce to one model:
 
 ```
 Project  = id, name, ordered list of Segments, createdAt, updatedAt
-Segment  = id, sourceUri, sourceDurationUs, startUs, endUs, hasAudio, width, height, isHdr
+Segment  = id, sourceUri, sourceDurationUs, startUs, endUs, hasAudio, width, height
 ```
 
 `width` / `height` are display dimensions after applying the source's rotation metadata (a portrait phone video stored as 1920x1080 with 90 degree rotation is recorded as 1080x1920).
@@ -75,7 +75,7 @@ Landscape-first layout for the 11" screen; portrait also works.
 2. **Editor:**
    - Preview player on top, playing the whole project as one continuous sequence.
    - Timeline strip below: one block per segment, width proportional to duration, showing thumbnails. Each block has draggable start/end handles (trim). A playhead line shows the current position; tapping the strip seeks.
-   - The timeline uses a fixed scale of 40 dp per second and scrolls horizontally, so long clips (10+ min) can still be trimmed precisely (about 25 ms per dp). No zoom in v1. Blocks have a minimum on-screen width of 24 dp so short segments stay tappable. The timeline auto-scrolls to keep the playhead visible during playback.
+   - The timeline uses a fixed scale of 20 dp per second and scrolls horizontally, so long clips (10+ min) can still be trimmed precisely. No zoom in v1. Blocks have a minimum on-screen width of 24 dp so short segments stay tappable. During playback the timeline auto-scrolls to keep the playhead visible.
    - Split acts on the segment under the playhead, at the playhead position.
    - Long-press and drag a block to reorder.
    - Toolbar: Add, Split, Delete, Undo, Redo, Export.
