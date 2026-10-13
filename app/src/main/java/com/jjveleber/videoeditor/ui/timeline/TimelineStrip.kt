@@ -179,7 +179,7 @@ private fun SegmentBlock(
                     onDragEnd = {
                         val to = reorderTargetIndex(geo.widths, currentIndex, dragX)
                         dragX = 0f
-                        onMove(currentIndex, to)
+                        if (to != currentIndex) onMove(currentIndex, to)
                     },
                     onDragCancel = { dragX = 0f },
                 ) { change, amount ->
