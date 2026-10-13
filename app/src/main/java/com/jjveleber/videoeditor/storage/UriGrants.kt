@@ -32,8 +32,8 @@ class AndroidUriGrants(private val resolver: ContentResolver) : UriGrants {
     override fun persisted(): Set<String> = resolver.persistedUriPermissions.map { it.uri.toString() }.toSet()
 }
 
-/** Releases every persisted grant that no saved project references. */
-fun releaseUnreferencedGrants(projects: List<Project>, grants: UriGrants) {
-    val referenced = projects.flatMap { p -> p.segments.map { it.sourceUri } }.toSet()
+/** Releases every persisted grant that no saved project references and that is not in [alsoKeep]. */
+fun releaseUnreferencedGrants(projects: List<Project>, grants: UriGrants, alsoKeep: Set<String> = emptySet()) {
+    val referenced = projects.flatMap { p -> p.segments.map { it.sourceUri } }.toSet() + alsoKeep
     (grants.persisted() - referenced).forEach(grants::release)
 }

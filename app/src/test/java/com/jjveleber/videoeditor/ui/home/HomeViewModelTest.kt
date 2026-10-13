@@ -1,5 +1,7 @@
 package com.jjveleber.videoeditor.ui.home
 
+import com.jjveleber.videoeditor.export.ExportController
+import com.jjveleber.videoeditor.export.ExportState
 import com.jjveleber.videoeditor.model.Segment
 import com.jjveleber.videoeditor.storage.ProjectRepository
 import com.jjveleber.videoeditor.testing.FakeGrants
@@ -35,6 +37,7 @@ class HomeViewModelTest {
 
     @After
     fun tearDown() {
+        ExportController.update(ExportState.Idle)
         Dispatchers.resetMain()
     }
 
@@ -83,5 +86,17 @@ class HomeViewModelTest {
         runCurrent()
         assertEquals(listOf("u2"), grants.released)
         assertEquals(listOf("P1"), vm.projects.value.map { it.name })
+    }
+
+    @Test
+    fun deleteKeepsGrantsNeededByRunningExport() = runTest(dispatcher) {
+        grants.take("u1")
+        grants.take("u2")
+        val p = repo.save(repo.create("P").copy(segments = listOf(seg("u1"), seg("u2"))))
+        ExportController.begin(setOf("u1"))
+        val vm = HomeViewModel(repo, grants, io = dispatcher)
+        vm.delete(p.id)
+        runCurrent()
+        assertEquals(listOf("u2"), grants.released)
     }
 }

@@ -2,6 +2,7 @@ package com.jjveleber.videoeditor.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jjveleber.videoeditor.export.ExportController
 import com.jjveleber.videoeditor.model.Project
 import com.jjveleber.videoeditor.model.totalDurationUs
 import com.jjveleber.videoeditor.storage.ProjectRepository
@@ -59,7 +60,7 @@ class HomeViewModel(
         viewModelScope.launch {
             withContext(io) {
                 repo.delete(id)
-                releaseUnreferencedGrants(repo.list(), grants)
+                releaseUnreferencedGrants(repo.list(), grants, ExportController.activeUris)
             }
             refresh()
         }

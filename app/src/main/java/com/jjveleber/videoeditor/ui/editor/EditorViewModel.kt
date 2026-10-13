@@ -2,6 +2,7 @@ package com.jjveleber.videoeditor.ui.editor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jjveleber.videoeditor.export.ExportController
 import com.jjveleber.videoeditor.history.UndoStack
 import com.jjveleber.videoeditor.media.SourceProber
 import com.jjveleber.videoeditor.media.toSegment
@@ -137,7 +138,7 @@ class EditorViewModel(
     override fun onCleared() {
         flush()
         // Safe to release now: the undo history (which could restore a deleted clip) dies with this screen.
-        releaseUnreferencedGrants(repo.list(), grants)
+        releaseUnreferencedGrants(repo.list(), grants, ExportController.activeUris)
     }
 
     private fun preview(op: (Project) -> Project) {

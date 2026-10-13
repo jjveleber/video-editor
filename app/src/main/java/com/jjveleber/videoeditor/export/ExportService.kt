@@ -107,7 +107,7 @@ class ExportService : Service() {
 
         fun start(context: Context, plan: CompositionPlan) {
             if (ExportController.state.value is ExportState.Running) return
-            ExportController.update(ExportState.Running(0))
+            ExportController.begin(plan.clips.map { it.uri }.toSet())
             try {
                 val intent = Intent(context, ExportService::class.java).putExtra(EXTRA_PLAN, Json.encodeToString(plan))
                 ContextCompat.startForegroundService(context, intent)

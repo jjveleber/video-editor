@@ -19,4 +19,11 @@ class UriGrantsTest {
         releaseUnreferencedGrants(projects, grants)
         assertEquals(listOf("u3"), grants.released)
     }
+
+    @Test
+    fun keepsUrisInAlsoKeep() {
+        val grants = FakeGrants().apply { take("u1"); take("u2"); take("u3") }
+        releaseUnreferencedGrants(listOf(Project("p1", "P1", listOf(seg("u1")), 0L, 0L)), grants, alsoKeep = setOf("u2"))
+        assertEquals(listOf("u3"), grants.released)
+    }
 }
