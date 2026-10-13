@@ -31,7 +31,7 @@ import java.util.Locale
 class Exporter(private val context: Context) {
 
     suspend fun export(plan: CompositionPlan, onProgress: (Int) -> Unit): Uri {
-        val temp = File(context.cacheDir, "export-${System.currentTimeMillis()}.mp4")
+        val temp = exportTempFile(context.cacheDir)
         try {
             withContext(Dispatchers.Main) { transform(buildComposition(plan), temp, onProgress) }
             return withContext(Dispatchers.IO) { saveToMovies(temp) }
