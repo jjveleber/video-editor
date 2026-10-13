@@ -74,7 +74,15 @@ You can leave the app while it works. A notification shows "Exporting video" wit
 
 ![Export sheet after finishing: Saved to Movies/VideoEditor/ with Open and Close buttons](images/export-done.png)
 
-The video is saved to **Movies/VideoEditor/** on the tablet. Tap **Open** to play it, or find it later in the Photos or Files app.
+### Finding your exported videos
+
+Every export is saved on the tablet in **Internal storage > Movies > VideoEditor**. Each file is named after the date and time of the export, for example `VideoEditor_20261013_142004.mp4` (October 13 2026 at 14:20:04).
+
+- **Right after exporting:** tap **Open** in the export sheet to play the video.
+- **Later, on the tablet:** open the **Files** app and go to **Internal storage > Movies > VideoEditor**. The app also adds each export to the tablet's media library, so apps that list your videos can show it.
+- **From a computer with adb:** `adb pull /sdcard/Movies/VideoEditor/` copies every export into the current folder.
+
+While an export is running, nothing appears in that folder yet. The video is built in the app's private storage and only shows up in **Movies/VideoEditor** once it is complete, so you never see a half-finished file. If the app is closed in the middle of an export (for example if it crashes or you force stop it), the unfinished file is deleted the next time you open the app.
 
 ## Missing clips
 

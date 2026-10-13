@@ -46,7 +46,7 @@ Optional: once installed, you can go back to **Apps from Unknown Sources** and t
 3. Edit on the timeline at the bottom: drag a clip's edge handles to trim it, tap **Split** to cut at the playhead, and select a clip and tap **Delete** to remove it. **Undo** and **Redo** step through your changes.
 4. To reorder clips, tap **Arrange**. Every clip shows as a same-size card with its position and length, so long clips are as easy to move as short ones. Drag a card to a new spot, or tap a card to select it and use **Move left** or **Move right**. **Undo** works here too. Tap **Done** to go back to the editor. (You can also long-press a clip on the timeline and drag it, which is handy for short clips.)
 5. Tap **Export**, then **Start**. You can leave the app while it works: a notification shows "Exporting video" with progress, then "Export complete" when done (or "Export failed" with the reason).
-6. Exported videos are saved to **Movies/VideoEditor/** on the tablet. Tap **Open** in the export sheet, or find them in the Photos or Files app.
+6. Exported videos are saved to **Internal storage > Movies > VideoEditor** on the tablet, named by date and time (for example `VideoEditor_20261013_142004.mp4`). Tap **Open** in the export sheet, or find them later in the **Files** app. See [Finding your exported videos](docs/usage.md#finding-your-exported-videos).
 
 Projects are saved automatically and listed on the home screen.
 
